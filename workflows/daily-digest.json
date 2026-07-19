@@ -1,0 +1,167 @@
+{
+  "name": "HR Daily Digest",
+  "nodes": [
+    {
+      "id": "b1b2c3d4-1111-4111-8111-111111111101",
+      "name": "Daily 8PM Cairo",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b1b2c3d4-2222-4222-8222-222222222202",
+      "name": "Read Organized Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [240, 0],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "الوظايف المنظمة",
+          "mode": "name"
+        },
+        "filtersUI": {},
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER_CREDENTIAL_ID",
+          "name": "Google Sheets (HR Service)"
+        }
+      }
+    },
+    {
+      "id": "b1b2c3d4-3333-4333-8333-333333333303",
+      "name": "Filter Today + Group",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const today = DateTime.now().setZone('Africa/Cairo').toFormat('yyyy-MM-dd');\n\nconst allRows = $input.all();\n\n// Filter rows added today\nconst todayRows = allRows.filter(row => {\n  const rowDate = (row.json['التاريخ'] || '').toString().trim();\n  return rowDate === today;\n});\n\n// Group by field in fixed display order\nconst fieldOrder = [\n  'IT/تقنية',\n  'محاسبة ومالية',\n  'مبيعات',\n  'هندسة',\n  'تسويق',\n  'موارد بشرية',\n  'طب وصحة',\n  'تعليم',\n  'أخرى'\n];\n\nconst groups = {};\nfor (const row of todayRows) {\n  const field = (row.json['المجال'] || 'أخرى').toString().trim();\n  if (!groups[field]) groups[field] = [];\n  groups[field].push(row.json);\n}\n\nreturn [{\n  json: {\n    today,\n    totalCount: todayRows.length,\n    groups,\n    fieldOrder,\n    hasJobs: todayRows.length > 0\n  }\n}];"
+      }
+    },
+    {
+      "id": "b1b2c3d4-4444-4444-8444-444444444404",
+      "name": "Has Jobs Today?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [720, 0],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-0002-4002-8002-000000000002",
+              "leftValue": "={{ $json.hasJobs }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b1b2c3d4-5555-4555-8555-555555555505",
+      "name": "Skip - No Jobs",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [960, 80],
+      "parameters": {}
+    },
+    {
+      "id": "b1b2c3d4-6666-4666-8666-666666666606",
+      "name": "Format Arabic Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const { today, groups, fieldOrder, totalCount } = $json;\n\n// Format date as DD/MM/YYYY\nconst parts = today.split('-');\nconst displayDate = `${parts[2]}/${parts[1]}/${parts[0]}`;\n\nconst lines = [];\nlines.push(`وظايف النهارده - ${displayDate}`);\nlines.push('');\n\nfor (const field of fieldOrder) {\n  const jobs = groups[field];\n  if (!jobs || jobs.length === 0) continue;\n\n  lines.push(`${field}:`);\n  for (const job of jobs) {\n    let line = `- ${job['اسم الشركة']} | ${job['المسمى الوظيفي']} | ${job['المدينة']} | ${job['نوع الشغل']}`;\n    const salary = (job['الراتب'] || '').toString().trim();\n    if (salary) {\n      line += ` | راتب: ${salary}`;\n    }\n    lines.push(line);\n  }\n  lines.push('');\n}\n\nlines.push(`المجموع: ${totalCount} وظيفة جديدة`);\n\nreturn [{ json: { message: lines.join('\\n') } }];"
+      }
+    },
+    {
+      "id": "b1b2c3d4-7777-4777-8777-777777777707",
+      "name": "Send Daily Digest",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1200, -80],
+      "parameters": {
+        "chatId": "YOUR_ADMIN_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER_CREDENTIAL_ID",
+          "name": "Telegram (HR Service Bot)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 8PM Cairo": {
+      "main": [
+        [{ "node": "Read Organized Sheet", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read Organized Sheet": {
+      "main": [
+        [{ "node": "Filter Today + Group", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter Today + Group": {
+      "main": [
+        [{ "node": "Has Jobs Today?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Jobs Today?": {
+      "main": [
+        [{ "node": "Format Arabic Message", "type": "main", "index": 0 }],
+        [{ "node": "Skip - No Jobs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Arabic Message": {
+      "main": [
+        [{ "node": "Send Daily Digest", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [{ "name": "hr-service", "id": "" }]
+}
