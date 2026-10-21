@@ -1,5 +1,14 @@
 # HR Service Job System
 
+## Project status and evidence
+
+**Requested build.** Requested by a real client but not delivered. No go-live, payment or audience-outcome claim.
+
+**My contribution:** Prepared deterministic form-to-sheet intake and grouped digest workflow artifacts.
+
+**Verification:** Workflow files and setup documentation exist; Moamen confirmed the request was real.
+
+
 A no-code intake and daily-digest pipeline for a jobs board. Companies submit openings through a Google Form; n8n deduplicates and organizes them in Google Sheets and sends the admin one clean Arabic digest on Telegram every evening. Built for an Egyptian recruitment service that runs several WhatsApp job groups and needed to stop managing postings by hand.
 
 ![HR Service Job System](https://raw.githubusercontent.com/Moamen-Elsharkawy/portfolio-assets/main/covers/hr-service-job-system.png)
@@ -57,7 +66,7 @@ docs/         setup-guide.md (zero-to-running) + sheet-structure.md (schema + di
 
 ## Status
 
-Phase one delivered, awaiting the client's server and credentials to go live. Published as a reusable Arabic jobs-intake template.
+Requested by a real client, but not delivered. Existing files are implementation artifacts, not handover or deployment evidence. Published as a reusable Arabic jobs-intake template.
 
 ## License
 
